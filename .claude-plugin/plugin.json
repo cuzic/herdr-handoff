@@ -1,6 +1,6 @@
 {
   "name": "herdr-handoff",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For herdr-core (hc) terminals.",
   "author": {
     "name": "cuzic"
