@@ -1,13 +1,15 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "herdr-handoff",
-  "description": "Handoff → /clear → resume in one command for Claude Code running in herdr-core",
-  "owner": { "name": "cuzic" },
+  "description": "Handoff → /clear → reload (or set a goal and run) for Claude Code in herdr-core",
+  "owner": {
+    "name": "cuzic"
+  },
   "plugins": [
     {
       "name": "herdr-handoff",
       "source": "./",
-      "description": "/handoff: write a handoff note, /clear, and resume from it automatically in a herdr-core (hc) terminal."
+      "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For herdr-core (hc) terminals."
     }
   ]
 }
