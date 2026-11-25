@@ -1,0 +1,10 @@
+{
+  "name": "herdr-handoff",
+  "version": "0.1.0",
+  "description": "/handoff: write a handoff note, /clear, and resume from it automatically in a herdr-core (hc) terminal.",
+  "author": { "name": "cuzic" },
+  "homepage": "https://github.com/cuzic/herdr-handoff",
+  "repository": "https://github.com/cuzic/herdr-handoff",
+  "license": "MIT",
+  "keywords": ["herdr", "hc", "handoff", "clear", "context"]
+}
