@@ -1,9 +1,9 @@
 ---
-description: 引継書を書き、/clear して、その引継書で自動再開する（herdr-core / hc）
+description: 引継書を書き、/clear して、引継書を読み込んだところで止まる（herdr-core / hc）
 argument-hint: "[次の会話への補足]"
 ---
 
-現在の作業を新しい会話に引き継ぎます。次の手順だけを行い、追加の実装や調査はしないでください。
+現在の作業を新しい会話に引き継ぎます（読み込みのみ: 新しい会話は引継書を読み込んで指示を待つ）。次の手順だけを行い、追加の実装や調査はしないでください。
 
 1. Bash で保存先を決める: `"${CLAUDE_PLUGIN_ROOT}/scripts/hc-handoff.sh" path`
 2. そのパスに引継書を Write する。1 行目は `# 引継書: <作業の短い題名>`。必須項目:
@@ -18,6 +18,6 @@ argument-hint: "[次の会話への補足]"
    - 起動中のプロセス・バックグラウンドのエージェント・外部の進行中作業
 
    確認済みの事実と推測は区別する。ユーザーの補足: $ARGUMENTS
-3. Bash で再開ドライバを起動する: `"${CLAUDE_PLUGIN_ROOT}/scripts/hc-handoff.sh" start <path>`
-   `launched` が出なければ（herdr-core の外など）、ユーザーに「`/clear` の後に `引継書 <path> を読んで続行` と送ってください」と伝える。
-4. 引継書のパスを 1 行で伝えて、すぐに応答を終える。その後ツールは呼ばない（応答の終了を待って、ドライバが `/clear` と再開指示を送る）。
+3. Bash で再開ドライバを起動する: `"${CLAUDE_PLUGIN_ROOT}/scripts/hc-handoff.sh" start load <path>`
+   `launched` ではなく `armed (no hc)` が出たら、ユーザーに「`/clear` すると引継書が読み込まれます」と伝える。
+4. 引継書のパスを 1 行で伝えて、すぐに応答を終える。その後ツールは呼ばない（応答の終了を待って、ドライバが `/clear` を送り、フックが引継書を読み込む）。

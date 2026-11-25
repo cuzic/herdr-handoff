@@ -1,10 +1,18 @@
 {
   "name": "herdr-handoff",
-  "version": "0.1.0",
-  "description": "/handoff: write a handoff note, /clear, and resume from it automatically in a herdr-core (hc) terminal.",
-  "author": { "name": "cuzic" },
+  "version": "0.2.0",
+  "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For herdr-core (hc) terminals.",
+  "author": {
+    "name": "cuzic"
+  },
   "homepage": "https://github.com/cuzic/herdr-handoff",
   "repository": "https://github.com/cuzic/herdr-handoff",
   "license": "MIT",
-  "keywords": ["herdr", "hc", "handoff", "clear", "context"]
+  "keywords": [
+    "herdr",
+    "hc",
+    "handoff",
+    "clear",
+    "context"
+  ]
 }
