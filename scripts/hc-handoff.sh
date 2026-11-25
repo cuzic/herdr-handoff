@@ -17,6 +17,7 @@
 # Environment:
 #   HERDR_HANDOFF_DIR          where notes go (default: ~/handoffs)
 #   HERDR_HANDOFF_AUTO_PROMPT  prompt sent in auto mode; "{file}" is replaced with the path
+#   HERDR_HANDOFF_MAX_WAIT     seconds to wait for the turn (and background agents) to end (14400)
 #   HERDR_HANDOFF_SETTLE       seconds to wait after the note is loaded before the auto prompt (0.5)
 set -uo pipefail
 
@@ -75,10 +76,17 @@ cmd_run() {
   log "start mode=$mode file=$F"
 
   # 1. Wait until the /handoff turn ends: working → keep waiting; idle/done (stable 2s) → go.
-  local deadline=$(( $(date +%s) + 3600 )) s
+  #    Background agents keep the terminal "working" until they all finish; that is intended
+  #    (a /clear would orphan them), so wait, but say so in the log every 10 minutes.
+  local t0; t0=$(date +%s)
+  local deadline=$(( t0 + ${HERDR_HANDOFF_MAX_WAIT:-14400} )) s next_note=$(( t0 + 120 ))
   while :; do
     (( $(date +%s) < deadline )) || { log "timeout waiting for turn end; abort"; disarm; exit 1; }
     s=$(status)
+    if [[ $s == working ]] && (( $(date +%s) >= next_note )); then
+      log "still working after $(( ($(date +%s) - t0) / 60 ))m (background agents/tasks?); waiting"
+      next_note=$(( $(date +%s) + 600 ))
+    fi
     case "$s" in
       working) hc wait "$T" --timeout 60 >/dev/null 2>&1 || sleep 2 ;;
       idle|done) sleep 2; [[ $(status) == "$s" ]] && break ;;
@@ -91,6 +99,8 @@ cmd_run() {
   fi
 
   # 2. /clear. The SessionStart hook loads the note and touches <key>.loaded.
+  #    Re-arm so a long wait (background agents) does not make the hook treat it as stale.
+  printf '%s\n%s\n' "$mode" "$F" >"$STATE/$key.pending"
   # hc send waits (~5s) for a turn to start, and /clear never starts one: don't block on it.
   hc send "$T" "/clear" >/dev/null 2>&1 &
   local sender=$!
