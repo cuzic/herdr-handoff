@@ -51,20 +51,20 @@ and the note is loaded (for auto, then tell it to go).
 |---|---|---|
 | `HERDR_HANDOFF_DIR` | `~/handoffs` | where notes, state (`.state/`) and the log (`.hc-handoff.log`) go |
 | `HERDR_HANDOFF_AUTO_PROMPT` | Japanese "set a goal and execute" prompt | `{file}` is replaced with the note path |
-| `HERDR_HANDOFF_MAX_WAIT` | `14400` | seconds to wait for the turn (and background agents) to end before giving up |
+| `HERDR_HANDOFF_MAX_WAIT` | `14400` | seconds to wait for the reply to end before giving up |
 | `HERDR_HANDOFF_SETTLE` | `0.5` | seconds between the note being loaded and the auto prompt |
 
 An armed reload expires after 2 hours, and is consumed by the first `/clear`.
 
 ## How it decides "the turn has ended"
 
-`hc get <t> --json` → `.status.state`: `working` keeps waiting (via `hc wait`),
-`idle`/`done` that stays the same for 2 s proceeds, anything else (`blocked`, `error`,
-missing) aborts. While background agents or tasks are running, Claude Code stays
-`working` even after the reply ends, so the driver waits for all of them (a `/clear`
-would orphan them) and logs a "still working" line every 10 minutes; the command tells
-Claude to fold each agent's result into the note as it arrives. One driver per terminal (`flock`). If the hook has not fired 60 s
-after `/clear`, the driver stops without sending anything.
+A `Stop` hook marks the end of the main reply. Background agents and shells keep the
+terminal `working` after that, but they survive `/clear`, so the driver does not wait for
+them; the note records them so the next conversation can pick them up. If the hook did not
+run, the fallback is `hc get <t> --json` → `.status.state`: `idle`/`done` that stays the
+same for 2 s proceeds. `blocked`, `error` or a missing terminal aborts without `/clear`.
+One driver per terminal (`flock`). If the note has not been loaded 60 s after `/clear`,
+the driver stops without sending anything.
 
 ## License
 

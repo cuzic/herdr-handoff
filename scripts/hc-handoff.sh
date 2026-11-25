@@ -5,19 +5,21 @@
 #   hc-handoff.sh start <load|auto> <file>   arm the reload and detach the driver; prints "launched"
 #   hc-handoff.sh run <terminal> <mode> <file>  the driver itself (normally started by `start`)
 #   hc-handoff.sh session-start              SessionStart hook: after /clear, load the armed note
+#   hc-handoff.sh stop                       Stop hook: tell the driver the main reply has ended
 #
 # Modes:
 #   load  /clear, then the SessionStart hook puts the note into the new context. Nothing else.
 #   auto  same, then the driver sends a prompt: pick the best goal from the note and execute it.
 #
-# The driver waits for the current turn to end, checks the note, and sends /clear. It never
+# The driver waits for the current reply to end (Stop hook; background agents may keep running,
+# they survive /clear), checks the note, and sends /clear. It never
 # sends /clear if the terminal is blocked, errored, or the note is missing. After /clear it
 # waits for the hook's "loaded" signal (not for a turn to end) before sending anything.
 #
 # Environment:
 #   HERDR_HANDOFF_DIR          where notes go (default: ~/handoffs)
 #   HERDR_HANDOFF_AUTO_PROMPT  prompt sent in auto mode; "{file}" is replaced with the path
-#   HERDR_HANDOFF_MAX_WAIT     seconds to wait for the turn (and background agents) to end (14400)
+#   HERDR_HANDOFF_MAX_WAIT     seconds to wait for the reply to end before giving up (14400)
 #   HERDR_HANDOFF_SETTLE       seconds to wait after the note is loaded before the auto prompt (0.5)
 set -uo pipefail
 
@@ -49,7 +51,7 @@ cmd_start() {
   local key; key=$(slot_key)
   # Arm the SessionStart hook. Works even without hc (manual /clear).
   printf '%s\n%s\n' "$mode" "$f" >"$STATE/$key.pending"
-  rm -f "$STATE/$key.loaded"
+  rm -f "$STATE/$key.loaded" "$STATE/$key.stopped"
 
   if [[ -z "${HC_TERMINAL_ID:-}" ]] || ! command -v hc >/dev/null || ! command -v jq >/dev/null; then
     echo "armed (no hc): run /clear yourself; the note will be loaded"
@@ -75,23 +77,30 @@ cmd_run() {
 
   log "start mode=$mode file=$F"
 
-  # 1. Wait until the /handoff turn ends: working → keep waiting; idle/done (stable 2s) → go.
-  #    Background agents keep the terminal "working" until they all finish; that is intended
-  #    (a /clear would orphan them), so wait, but say so in the log every 10 minutes.
-  local t0; t0=$(date +%s)
-  local deadline=$(( t0 + ${HERDR_HANDOFF_MAX_WAIT:-14400} )) s next_note=$(( t0 + 120 ))
+  # 1. Wait until the /handoff reply ends. The Stop hook touches <key>.stopped when the main
+  #    reply ends, even while background agents/shells keep the terminal "working"; those
+  #    survive /clear, so they need not finish first. Fallback (hook did not run): idle/done
+  #    stable for 2s. blocked/error/missing aborts.
+  local deadline=$(( $(date +%s) + ${HERDR_HANDOFF_MAX_WAIT:-14400} )) s i=0
   while :; do
     (( $(date +%s) < deadline )) || { log "timeout waiting for turn end; abort"; disarm; exit 1; }
-    s=$(status)
-    if [[ $s == working ]] && (( $(date +%s) >= next_note )); then
-      log "still working after $(( ($(date +%s) - t0) / 60 ))m (background agents/tasks?); waiting"
-      next_note=$(( $(date +%s) + 600 ))
+    if [[ -e "$STATE/$key.stopped" ]]; then
+      rm -f "$STATE/$key.stopped"
+      s=$(status)
+      case "$s" in
+        working|idle|done) log "reply ended (Stop hook, status=$s)"; sleep 0.5; break ;;
+        *) log "status=$s; abort (no /clear)"; disarm; exit 1 ;;
+      esac
     fi
-    case "$s" in
-      working) hc wait "$T" --timeout 60 >/dev/null 2>&1 || sleep 2 ;;
-      idle|done) sleep 2; [[ $(status) == "$s" ]] && break ;;
-      *) log "status=$s; abort (no /clear)"; disarm; exit 1 ;;
-    esac
+    if (( i++ % 10 == 0 )); then   # hc every ~2s; the Stop signal every 0.2s
+      s=$(status)
+      case "$s" in
+        working) ;;
+        idle|done) sleep 2; [[ $(status) == "$s" ]] && { log "reply ended (status=$s)"; break; } ;;
+        *) log "status=$s; abort (no /clear)"; disarm; exit 1 ;;
+      esac
+    fi
+    sleep 0.2
   done
 
   if [[ ! -s "$F" ]] || ! grep -q '^# ' "$F"; then
@@ -132,6 +141,14 @@ cmd_run() {
   log "sent auto prompt; done"
 }
 
+# Stop hook: the main reply has ended. Signal the driver if a reload is armed here.
+cmd_stop() {
+  cat >/dev/null
+  local key; key=$(slot_key)
+  [[ -f "$STATE/$key.pending" ]] && touch "$STATE/$key.stopped"
+  exit 0
+}
+
 # SessionStart hook (matcher "clear"). Reads the hook JSON on stdin; prints hook JSON.
 cmd_session_start() {
   cat >/dev/null  # hook input is not needed; the slot comes from the environment
@@ -167,5 +184,6 @@ case "${1:-}" in
   start) shift; cmd_start "$@" ;;
   run)   shift; cmd_run "$@" ;;
   session-start) shift; cmd_session_start "$@" ;;
+  stop)  shift; cmd_stop "$@" ;;
   *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
