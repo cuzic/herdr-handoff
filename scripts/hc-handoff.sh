@@ -17,6 +17,7 @@
 # Environment:
 #   HERDR_HANDOFF_DIR          where notes go (default: ~/handoffs)
 #   HERDR_HANDOFF_AUTO_PROMPT  prompt sent in auto mode; "{file}" is replaced with the path
+#   HERDR_HANDOFF_SETTLE       seconds to wait after the note is loaded before the auto prompt (0.5)
 set -uo pipefail
 
 DIR="${HERDR_HANDOFF_DIR:-$HOME/handoffs}"
@@ -90,14 +91,19 @@ cmd_run() {
   fi
 
   # 2. /clear. The SessionStart hook loads the note and touches <key>.loaded.
-  hc send "$T" "/clear" >/dev/null 2>&1 || { log "send /clear failed"; disarm; exit 1; }
+  # hc send waits (~5s) for a turn to start, and /clear never starts one: don't block on it.
+  hc send "$T" "/clear" >/dev/null 2>&1 &
+  local sender=$!
   log "sent /clear"
 
   # 3. Wait for the hook's signal (do not rely on hc wait: /clear may not report a turn end).
   local i
-  for i in $(seq 1 120); do
+  for i in $(seq 1 600); do
     [[ -e "$STATE/$key.loaded" ]] && break
-    sleep 0.5
+    if (( i % 10 == 0 )) && ! kill -0 "$sender" 2>/dev/null && ! wait "$sender"; then
+      log "send /clear failed"; disarm; exit 1
+    fi
+    sleep 0.1
   done
   if [[ ! -e "$STATE/$key.loaded" ]]; then
     log "note was not loaded within 60s (hook missing?); stop"; disarm; exit 1
@@ -108,7 +114,7 @@ cmd_run() {
   [[ $mode == auto ]] || { log "load mode; done"; exit 0; }
 
   # 4. Let the input box settle, then send the auto prompt.
-  sleep 2
+  sleep "${HERDR_HANDOFF_SETTLE:-0.5}"
   s=$(status)
   case "$s" in idle|done) ;; *) log "status=$s after /clear; auto prompt not sent"; exit 1 ;; esac
   local prompt="${HERDR_HANDOFF_AUTO_PROMPT:-$DEFAULT_AUTO_PROMPT}"
