@@ -1,7 +1,7 @@
 {
   "name": "herdr-handoff",
-  "version": "0.3.0",
-  "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For herdr-core (hc) terminals.",
+  "version": "0.4.0",
+  "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For Claude Code, Codex and Muse Code in herdr-core (hc) terminals.",
   "author": {
     "name": "cuzic"
   },
@@ -13,6 +13,8 @@
     "hc",
     "handoff",
     "clear",
-    "context"
+    "context",
+    "codex",
+    "muse"
   ]
 }

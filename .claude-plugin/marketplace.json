@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "herdr-handoff",
-  "description": "Handoff → /clear → reload (or set a goal and run) for Claude Code in herdr-core",
+  "description": "Handoff → /clear → reload (or set a goal and run) for Claude Code, Codex and Muse Code in herdr-core",
   "owner": {
     "name": "cuzic"
   },
@@ -9,7 +9,7 @@
     {
       "name": "herdr-handoff",
       "source": "./",
-      "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For herdr-core (hc) terminals."
+      "description": "/handoff: write a handoff note, /clear, and reload it. /handoff-auto: also pick a goal from it and run autonomously. For Claude Code, Codex and Muse Code in herdr-core (hc) terminals."
     }
   ]
 }
